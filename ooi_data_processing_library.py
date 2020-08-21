@@ -34,7 +34,7 @@ import logging
 class OOIHydrophoneData:
 
     def __init__(self, starttime=None, endtime=None, node=None, fmin=None,
-        fmax=None, print_exceptions=None, limit_seed_files=True, data_gap_mode=0):
+        fmax=None, print_exceptions=None, limit_seed_files=True, data_gap_mode=0, distributed=False):
         
         ''' 
         Initialize Class OOIHydrophoneData
@@ -498,7 +498,7 @@ class OOIHydrophoneData:
         
         return data_url_list
     
-    def get_acoustic_data_conc(self, starttime, endtime, node, fmin=None, fmax=None, max_workers=20, append=True, verbose=False):
+    def get_acoustic_data_conc(self, starttime, endtime, node, fmin=None, fmax=None, max_workers=20, append=True, verbose=False, dask_client=None):
         '''
         Get acoustic data for specific time frame and node:
 
@@ -617,7 +617,11 @@ class OOIHydrophoneData:
         
         # Code Below from Landung Setiawan
         self.logger = logging.getLogger('HYDRO-FETCHER')
-        st_list = self.__map_concurrency(self.__read_mseed, valid_data_url_list)        #removed max workers argument
+        if dask_client:
+            futures = dask_client.map(self.__read_mseed, valid_data_url_list)
+            st_list = dask_client.gather(futures)
+        else:
+            st_list = self.__map_concurrency(self.__read_mseed, valid_data_url_list, max_workers=max_workers)
         st_all = None
         for st in st_list:
             if st:
